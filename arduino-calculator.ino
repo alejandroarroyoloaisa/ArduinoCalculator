@@ -2,31 +2,35 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 
-//Crear el objeto lcd  dirección  0x3F y 16 columnas x 2 filas
-LiquidCrystal_I2C lcd(0x27,16,2);  //
 
-const byte ROWS = 4; //four rows
-const byte COLS = 4; //four columns
-char keys[ROWS][COLS] = {
+LiquidCrystal_I2C lcd(0x27,16,2);           //Create the LCD object with the given address and 16 columns x 2 rows
+
+const byte ROWS = 4;                        //four rows of the keyboard
+const byte COLS = 4;                        //four columns of the keyboard
+char keys[ROWS][COLS] = {                   //Matrix with the keyboard elements (you can change them from here)
   {'1','2','3','A'},
   {'4','5','6','B'},
   {'7','8','9','C'},
-  {'.','0','+','='}
+  {'.','0','+','D'}
 };
+byte rowPins[ROWS] = {5, 4, 3, 2};          //connect to the row pinouts of the keypad
+byte colPins[COLS] = {9, 8, 7, 6};          //connect to the column pinouts of the keypad
 
-byte rowPins[ROWS] = {5, 4, 3, 2}; //connect to the row pinouts of the keypad
-byte colPins[COLS] = {9, 8, 7, 6}; //connect to the column pinouts of the keypad
-
+//It creates a keypad with the keymap given
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
-char key;
-char number1;
-char number2;
 
-int cursor = 0;
-int menuOptions=5;
+
+char key;                                   //Key pressed on the keyboard
+int cursor = 0;                             //Cursor points to the actual option in the menu
+int menuOptions=5;                          //Total amount of options in the menu
+
+
+
+//FUNCTION TO NAVIGATE THROUGH THE MENU AND SHOW THE OPTIONS IN THE DISPLAY
 void menuNavigation(int upDown){
 
+  //UPDATE THE CURSOR: up or down without crossing the limits
   if( upDown == 1){
     if(cursor < (menuOptions-1)){
       lcd.clear();  
@@ -34,7 +38,6 @@ void menuNavigation(int upDown){
     }      
   }else if( upDown == -1){
     if(cursor > 1){
-      
       lcd.clear();  
       cursor--;
     }
@@ -44,23 +47,26 @@ void menuNavigation(int upDown){
   //2.- Subtraction
   //3.- Multiplication
   //4.- Division
-  String menu [menuOptions] = { {"SELECT THE OPTION DESIRED:"},
+  String menu [menuOptions] = { {"SELECT OPTION:"},
                                 {"1.- Add"}, 
-                                {"2.- Sub"}, 
-                                {"3.- Mult"}, 
-                                {"4.- Div"}
+                                {"2.- Subtract"}, 
+                                {"3.- Multiply"}, 
+                                {"4.- Divide"}
                               };                    
   
+  //String that will be displayed. To concatenate an arrow '->' with the actual option
   String string_displayed = "";
   int aux = 0;
   for(int i = cursor; i < (cursor+2) ; i++){
-      if( i == 5){
+      //If it is the last option, clear part of the screen (to not show garbage)
+      if( i == 5 ){
         lcd.setCursor(0, aux);
         lcd.print("");       
         break;
       }
+      //Draw an arrow in the beginning of the actual option (cursor), show the option and clear the string
       lcd.setCursor(0, aux);
-      if( cursor != 0 && i == cursor){
+      if( cursor != 0 && i == cursor ){
         string_displayed += "->";
       }
       string_displayed += menu[i];
@@ -72,31 +78,67 @@ void menuNavigation(int upDown){
 }
 
 void setup(){
-   Serial.begin(9600);
+    Serial.begin(9600);
 
      // Inicializar el LCD
-  lcd.init();
+    lcd.init();
   
-  //Encender la luz de fondo.
-  lcd.backlight();
+    //Encender la luz de fondo.
+    lcd.backlight();
 }
   
-bool inTheMenu = true;
+
+
+
+
+bool inTheMenu = false;                     //True = you are in the menu ; False = you are not in the menu
+int chosenOption;
 void loop(){
 
-  key = keypad.getKey();
-  if( inTheMenu ){
-    if(key == 'A'){
-      menuNavigation(-1);   
-    }else if(key == 'B'){
-      menuNavigation(1);
-    }else if(key == 'C'){
-      lcd.clear();
-      inTheMenu = false;
-    }else{
-      menuNavigation(0);
-    }
-  }
+  key = keypad.getKey();                    //Get the key from the keyboard
   
+  //If the key was D and you are not yet in the menu, you have chosen the MENU so it flags true
+  if( key == 'D' && !inTheMenu ){
+    inTheMenu = true;
+  }
+  //If you are in the menu you can navigate through it, choose an option or leave without choosing
+  else if( inTheMenu ){
+    
+      if(key == 'A'){                       //UP IN THE MENU
+        menuNavigation(-1);   
+      }else if(key == 'B'){                 //DOWN IN THE MENU
+        menuNavigation(1);
+      }else if(key == 'C'){                 //CHOOSE THE OPTION IN THE MENU. Clear the display and leave the menu. The option is memorized with 'cursor' in 'chosenOption'
+        lcd.clear();
 
+
+        //*******HAY QUE HACER ALGO CON ESTO DE LA OPCION ELEGIDA. YO PROPONGO QUE AL ELEGIR LA OPCION PONE EL SIMBOLO
+        chosenOption = cursor;
+        cursor = 0;
+
+
+
+        inTheMenu = false;
+      }else if(key == 'D'){                 //LEAVE THE MENU WITHOUT CHOOSING ANY OPTION. Clear the display and the 'cursor', leave the menu.
+        lcd.clear();
+        cursor = 0;
+        inTheMenu = false;
+      }else{                                //You are not choosing any option yet (to show something at least)
+        menuNavigation(0);
+      }
+  }
 }
+
+
+//PROGRAMAR.
+//1.- Se pulsan numeros y aparecen en la pantalla. MAX 16 CARACTERES
+//2.- Se pone decimal con '*'
+//3.- Se le da al IGUAL con '#'
+//4.- Si le damos al menú con D, se pueden poner símbolos
+//5.- Algún botón para borrar la operación
+//6.- Que se muestre como algo así (primera fila operación, segunda resultado):
+//        5 + 6 - 7 * 2
+//        = 8
+
+//Para poner decimales: se pulsa 7 y luego el punto, indicando que será 7.algo . Entonces ese algo se almacenará hasta que se pulse algún símbolo y la manera de almacenarlo
+//será dividirlo entre 10^cuantos digitos tenga para que se quede 0.algo y lo puedas sumar al 7, quedando este entonces con sus decimales.

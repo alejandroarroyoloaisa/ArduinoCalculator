@@ -11,7 +11,7 @@ char keys[ROWS][COLS] = {                   //Matrix with the keyboard elements 
   {'1','2','3','A'},
   {'4','5','6','B'},
   {'7','8','9','C'},
-  {'.','0','+','D'}
+  {'.','0','=','D'}
 };
 byte rowPins[ROWS] = {5, 4, 3, 2};          //connect to the row pinouts of the keypad
 byte colPins[COLS] = {9, 8, 7, 6};          //connect to the column pinouts of the keypad
@@ -77,6 +77,30 @@ void menuNavigation(int upDown){
 
 }
 
+char lastOperator='\0';
+double total = 0;
+String toFormTheNumber = "";
+String stringDisplayed = "";
+void applyLastOperator(){
+  
+  if( lastOperator == '\0' ){
+    total = total + toFormTheNumber.toDouble();
+  }
+  if( lastOperator == '+' ){
+    total = total + toFormTheNumber.toDouble();
+    toFormTheNumber = "";
+  }else if(lastOperator == '-'){
+    total = total - toFormTheNumber.toDouble();
+    toFormTheNumber = "";
+  }else if(lastOperator == '*'){
+    total = total * toFormTheNumber.toDouble();
+    toFormTheNumber = "";
+  }else if(lastOperator == '/'){
+    total = total / toFormTheNumber.toDouble();
+    toFormTheNumber = "";    
+  }
+}
+
 void setup(){
     Serial.begin(9600);
 
@@ -93,10 +117,37 @@ void setup(){
 
 bool inTheMenu = false;                     //True = you are in the menu ; False = you are not in the menu
 int chosenOption;
+bool restartFlag = false;
 void loop(){
 
   key = keypad.getKey();                    //Get the key from the keyboard
+
   
+  if( ( key >= '0' && key <= '9') || key == '.'){
+    if(restartFlag){
+      restartFlag = false;
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      total = 0;
+      toFormTheNumber = "";
+      stringDisplayed = "";
+      lastOperator = '\0';     
+    }
+    lcd.print(key);
+    toFormTheNumber += key;
+    stringDisplayed += key;
+  }
+
+  if( key == '=' && !inTheMenu ){
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(stringDisplayed);
+    lcd.setCursor(0, 1);
+    lcd.print('=');
+    applyLastOperator();
+    lcd.print(total);
+    restartFlag = true;
+  }  
   //If the key was D and you are not yet in the menu, you have chosen the MENU so it flags true
   if( key == 'D' && !inTheMenu ){
     inTheMenu = true;
@@ -110,17 +161,30 @@ void loop(){
         menuNavigation(1);
       }else if(key == 'C'){                 //CHOOSE THE OPTION IN THE MENU. Clear the display and leave the menu. The option is memorized with 'cursor' in 'chosenOption'
         lcd.clear();
-
-
-        //*******HAY QUE HACER ALGO CON ESTO DE LA OPCION ELEGIDA. YO PROPONGO QUE AL ELEGIR LA OPCION PONE EL SIMBOLO
+        
         chosenOption = cursor;
         cursor = 0;
 
-
-
+        //CHECKS THE OPTION CHOSEN AND APPLIES THE SYMBOL  
+        if(chosenOption == 1){
+          applyLastOperator();
+          lastOperator = '+';
+        }else if(chosenOption == 2){
+          applyLastOperator();
+          lastOperator = '-';
+        }else if(chosenOption == 3){
+          applyLastOperator();
+          lastOperator = '*';
+        }else if(chosenOption == 4){
+          applyLastOperator();
+          lastOperator = '/';          
+        }
+        stringDisplayed += lastOperator;        
+        lcd.print(stringDisplayed);
         inTheMenu = false;
       }else if(key == 'D'){                 //LEAVE THE MENU WITHOUT CHOOSING ANY OPTION. Clear the display and the 'cursor', leave the menu.
         lcd.clear();
+        lcd.print(stringDisplayed);
         cursor = 0;
         inTheMenu = false;
       }else{                                //You are not choosing any option yet (to show something at least)

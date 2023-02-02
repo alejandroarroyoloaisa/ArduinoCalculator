@@ -21,13 +21,24 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
 
 
-char key;                                   //Key pressed on the keyboard
-int cursor = 0;                             //Cursor points to the actual option in the menu
-int menuOptions=5;                          //Total amount of options in the menu
+
+
+void setup(){
+    Serial.begin(9600);
+
+     // Inicializar el LCD
+    lcd.init();
+  
+    //Encender la luz de fondo.
+    lcd.backlight();
+}
+
 
 
 
 //FUNCTION TO NAVIGATE THROUGH THE MENU AND SHOW THE OPTIONS IN THE DISPLAY
+int cursor = 0;                             //Cursor points to the actual option in the menu
+int menuOptions=5;                          //Total amount of options in the menu
 void menuNavigation(int upDown){
 
   //UPDATE THE CURSOR: up or down without crossing the limits
@@ -76,78 +87,138 @@ void menuNavigation(int upDown){
   }
 
 }
-
-char lastOperator='\0';
-double total = 0;
-String toFormTheNumber = "";
-String stringDisplayed = "";
-void applyLastOperator(){
   
-  if( lastOperator == '\0' ){
-    total = total + toFormTheNumber.toDouble();
+
+
+  
+//FUNCTION THAT INCLUDES THE OPERATOR IN THE STRING GIVEN. RETURNS THE STRING
+String includeOperator(int chosenOption, String stringIntroduced){
+  
+  //CHECKS THE OPTION CHOSEN AND INCLUDES THE SYMBOL  
+  if(chosenOption == 1){
+          
+    stringIntroduced+="+";
+          
+  }else if(chosenOption == 2){
+          
+    stringIntroduced+="-";
+          
+  }else if(chosenOption == 3){
+          
+    stringIntroduced+="*";
+          
+  }else if(chosenOption == 4){
+
+    stringIntroduced+="/";
+          
   }
-  if( lastOperator == '+' ){
-    total = total + toFormTheNumber.toDouble();
-    toFormTheNumber = "";
-  }else if(lastOperator == '-'){
-    total = total - toFormTheNumber.toDouble();
-    toFormTheNumber = "";
-  }else if(lastOperator == '*'){
-    total = total * toFormTheNumber.toDouble();
-    toFormTheNumber = "";
-  }else if(lastOperator == '/'){
-    total = total / toFormTheNumber.toDouble();
-    toFormTheNumber = "";    
-  }
+
+  return stringIntroduced;
 }
 
-void setup(){
-    Serial.begin(9600);
 
-     // Inicializar el LCD
-    lcd.init();
-  
-    //Encender la luz de fondo.
-    lcd.backlight();
+
+
+
+//FUNCTION THAT CALCULATES ANSWER BY GIVING AN STRING. RETURNS THE ANSWER
+float calculateAnswer(String stringIntroduced){
+  float answer = 0;                                     //Float with the answer
+  String numberAux = "";                                //Actual number recognized
+  char symbolRecognized;                                //Actual symbol recognized
+  bool firstNumber = true;                              //FLAG that marks if it is the first number recognized
+  //Traverse the array char by char
+  for(int i = 0 ; i < stringIntroduced.length() ; i++){
+    //If it is a number, concatenate it
+    if(stringIntroduced[i] != '+' && stringIntroduced[i] != '-' && stringIntroduced[i] != '*' && stringIntroduced[i] != '/'){
+
+      numberAux += stringIntroduced[i];
+            
+    }
+    //If it is a symbol
+    else{
+      //If it is the first number saved, add it to the answer 
+      if(firstNumber){
+        answer += numberAux.toFloat();
+        numberAux = "";
+        firstNumber = false;
+      }
+
+      symbolRecognized = stringIntroduced[i];           //save the symbol recognized
+
+      //Traverse the array looking for the number to apply the symbol recognized. It finishes by finding another symbol or by ending the array
+      int j;
+      for(j = i+1 ; j < stringIntroduced.length() ; j++){
+        if(stringIntroduced[j] != '+' && stringIntroduced[j] != '-' && stringIntroduced[j] != '*' && stringIntroduced[j] != '/'){
+          numberAux += stringIntroduced[j];
+        }else{
+          break;
+        }
+      }
+      
+      //Checks the symbol and apply the operation (the three next lines are to check the operations on monitor)
+      //Serial.print(answer);
+      //Serial.print(symbolRecognized);
+      //Serial.print(numberAux + "\n");
+      if( symbolRecognized == '+'){
+        answer += numberAux.toFloat();        
+      }else if( symbolRecognized == '-'){
+        answer -= numberAux.toFloat();
+      }else if( symbolRecognized == '*'){
+        answer *= numberAux.toFloat();        
+      }else if( symbolRecognized == '/'){
+        answer /= numberAux.toFloat();        
+      }
+
+      //If the array isnt finished, clear the numberAux string
+      if( j < stringIntroduced.length() ){
+        numberAux = "";               
+      }
+            
+      i=j-1;            //Updates the array pointer to match the new position                                   
+    }
+  }
+  //IF 'firstNumber' FLAG IS UP BY THIS POINT: There is only one number so it is the answer
+  if(firstNumber){
+    answer = numberAux.toFloat();
+  }
+  return answer;
 }
-  
 
 
 
 
+String stringDisplayed = "";                //String. Contains the actual operation to calculate
 bool inTheMenu = false;                     //True = you are in the menu ; False = you are not in the menu
-int chosenOption;
-bool restartFlag = false;
+bool restartFlag = false;                   //Flag to clear the screen
+char key;                                   //Key pressed on the keyboard
 void loop(){
 
   key = keypad.getKey();                    //Get the key from the keyboard
 
-  
+  //If the key pressed is a number or a decimal point
   if( ( key >= '0' && key <= '9') || key == '.'){
-    if(restartFlag){
+    //If 'restartFlag' is on (it happens after pressing '='), clear the screen and string read
+    if(restartFlag){                
       restartFlag = false;
       lcd.clear();
       lcd.setCursor(0, 0);
-      total = 0;
-      toFormTheNumber = "";
-      stringDisplayed = "";
-      lastOperator = '\0';     
+      stringDisplayed = "";   
     }
-    lcd.print(key);
-    toFormTheNumber += key;
+    lcd.print(key);                         //Print the number pressed
     stringDisplayed += key;
   }
 
+  //If not in the menu and press '=', calculate the answer and show it. Restart flag now ON
   if( key == '=' && !inTheMenu ){
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(stringDisplayed);
     lcd.setCursor(0, 1);
     lcd.print('=');
-    applyLastOperator();
-    lcd.print(total);
+    lcd.print( calculateAnswer(stringDisplayed) );
     restartFlag = true;
   }  
+  
   //If the key was D and you are not yet in the menu, you have chosen the MENU so it flags true
   if( key == 'D' && !inTheMenu ){
     inTheMenu = true;
@@ -159,28 +230,11 @@ void loop(){
         menuNavigation(-1);   
       }else if(key == 'B'){                 //DOWN IN THE MENU
         menuNavigation(1);
-      }else if(key == 'C'){                 //CHOOSE THE OPTION IN THE MENU. Clear the display and leave the menu. The option is memorized with 'cursor' in 'chosenOption'
+      }else if(key == 'C'){                 //CHOOSE THE OPTION IN THE MENU. Clear the display and leave the menu. The option is memorized with 'cursor'
         lcd.clear();
-        
-        chosenOption = cursor;
-        cursor = 0;
-
-        //CHECKS THE OPTION CHOSEN AND APPLIES THE SYMBOL  
-        if(chosenOption == 1){
-          applyLastOperator();
-          lastOperator = '+';
-        }else if(chosenOption == 2){
-          applyLastOperator();
-          lastOperator = '-';
-        }else if(chosenOption == 3){
-          applyLastOperator();
-          lastOperator = '*';
-        }else if(chosenOption == 4){
-          applyLastOperator();
-          lastOperator = '/';          
-        }
-        stringDisplayed += lastOperator;        
-        lcd.print(stringDisplayed);
+        stringDisplayed = includeOperator(cursor, stringDisplayed);            //PUTS OPERATOR IN THE STRING
+        cursor = 0;                                                            //Clear the chosen option
+        lcd.print(stringDisplayed);                                            
         inTheMenu = false;
       }else if(key == 'D'){                 //LEAVE THE MENU WITHOUT CHOOSING ANY OPTION. Clear the display and the 'cursor', leave the menu.
         lcd.clear();
@@ -194,15 +248,7 @@ void loop(){
 }
 
 
-//PROGRAMAR.
-//1.- Se pulsan numeros y aparecen en la pantalla. MAX 16 CARACTERES
-//2.- Se pone decimal con '*'
-//3.- Se le da al IGUAL con '#'
-//4.- Si le damos al menú con D, se pueden poner símbolos
-//5.- Algún botón para borrar la operación
-//6.- Que se muestre como algo así (primera fila operación, segunda resultado):
-//        5 + 6 - 7 * 2
-//        = 8
-
-//Para poner decimales: se pulsa 7 y luego el punto, indicando que será 7.algo . Entonces ese algo se almacenará hasta que se pulse algún símbolo y la manera de almacenarlo
-//será dividirlo entre 10^cuantos digitos tenga para que se quede 0.algo y lo puedas sumar al 7, quedando este entonces con sus decimales.
+//TODOs
+//1.- Se pulsan numeros y aparecen en la pantalla. Si se salen de la pantalla por la derecha (no caben) ir moviendo el string hacia la derecha
+//2.- Algún botón para borrar la operación
+//3.- Add raise numbers and square roots

@@ -1,6 +1,7 @@
 #include <Keypad.h>
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
+#include <math.h>
 
 
 LiquidCrystal_I2C lcd(0x27,16,2);           //Create the LCD object with the given address and 16 columns x 2 rows
@@ -26,11 +27,11 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 void setup(){
     Serial.begin(9600);
 
-     // Inicializar el LCD
+     // Initialize the LCD
     lcd.init();
   
-    //Encender la luz de fondo.
-    lcd.backlight();
+    //Light the back of the LCD
+    lcd.backlight();   
 }
 
 
@@ -38,7 +39,7 @@ void setup(){
 
 //FUNCTION TO NAVIGATE THROUGH THE MENU AND SHOW THE OPTIONS IN THE DISPLAY
 int cursor = 0;                             //Cursor points to the actual option in the menu
-int menuOptions=5;                          //Total amount of options in the menu
+int menuOptions=11;                          //Total amount of options in the menu
 void menuNavigation(int upDown){
 
   //UPDATE THE CURSOR: up or down without crossing the limits
@@ -58,11 +59,20 @@ void menuNavigation(int upDown){
   //2.- Subtraction
   //3.- Multiplication
   //4.- Division
+  //5.- Power
+  //6.- Logarithm
+  //7.- SquareRoot  
   String menu [menuOptions] = { {"SELECT OPTION:"},
                                 {"1.- Add"}, 
                                 {"2.- Subtract"}, 
                                 {"3.- Multiply"}, 
-                                {"4.- Divide"}
+                                {"4.- Divide"},
+                                {"5.- Power"},
+                                {"6.- Logarithm"},
+                                {"7.- SquareRoot"},
+                                {"8.- Sine"},
+                                {"9.- Cosine"},
+                                {"10.- Tangent"}                     
                               };                    
   
   //String that will be displayed. To concatenate an arrow '->' with the actual option
@@ -70,7 +80,7 @@ void menuNavigation(int upDown){
   int aux = 0;
   for(int i = cursor; i < (cursor+2) ; i++){
       //If it is the last option, clear part of the screen (to not show garbage)
-      if( i == 5 ){
+      if( i == menuOptions ){
         lcd.setCursor(0, aux);
         lcd.print("");       
         break;
@@ -111,13 +121,144 @@ String includeOperator(int chosenOption, String stringIntroduced){
 
     stringIntroduced+="/";
           
+  }else if(chosenOption == 5){
+
+    stringIntroduced+="pow(";
+          
+  }else if(chosenOption == 6){
+
+    stringIntroduced+="log(";
+          
+  }else if(chosenOption == 7){
+
+    stringIntroduced+="sqrt(";
+          
+  }else if(chosenOption == 8){
+
+    stringIntroduced+="sin(";
+          
+  }else if(chosenOption == 9){
+
+    stringIntroduced+="cos(";
+          
+  }else if(chosenOption == 10){
+
+    stringIntroduced+="tan(";
+          
   }
+  
 
   return stringIntroduced;
 }
 
 
+//FUNCTION THAT CHANGE THE POWERs, LOGARITHMs AND SQRTs TO THEIR RESULT IN THE STRING
+String deleteHardOperations(String stringIntroduced){
+  
+  String alteredString = "";     //Returned string. It will have only basic operations at the return
 
+  //Traverse the array looking for pow(), log() or sqrt()  ::: s - sqrt(number)  || p - power(number)  || l - log(number)
+  for( int i = 0 ; i < stringIntroduced.length() ; i++ ){
+    
+    //How does it work FOR ALL THE IFs:
+    //Keep copying the number or numbers involved in the operation till reaching ')'
+    //Then calculate the operation with those number and concatenate it on the 'alteredString'
+    //Update 'i' with the end of the operation to continue reading the string   
+    if(stringIntroduced[i] == 's' && stringIntroduced[i+1] == 'q'){           //SQRT
+      int index = i;
+      String number = "";      
+      while( stringIntroduced[index] != ')' ){
+        if( ( stringIntroduced[index] >= '0' && stringIntroduced[index] <= '9') || stringIntroduced[index] == '.' ){
+          number += stringIntroduced[index];
+        }
+        index++;        
+      }
+      number =  String( sqrt(number.toDouble() ) );
+      alteredString += number;
+      i = index;            
+    }
+    else if(stringIntroduced[i] == 'p'){      //POWER
+      int index = i;
+      String base = "";
+      String exp = ""; 
+      bool baseCopied = false;
+      while( stringIntroduced[index] != ')' ){
+        if( ( stringIntroduced[index] >= '0' && stringIntroduced[index] <= '9') || stringIntroduced[index] == '.' ){
+          
+          //If the base has been copied, then copy the exponent
+          if( !baseCopied ){
+            base += stringIntroduced[index];
+          }else{
+            exp += stringIntroduced[index];
+          }
+          
+        } else if (stringIntroduced[index] == ','){
+          //Activate the flag to start copying the exponent
+          baseCopied = true;          
+        }
+        index++;        
+      }       
+      String number =  String( pow(base.toDouble(), exp.toDouble() ) );
+      alteredString += number;
+      i = index; 
+    }
+    else if(stringIntroduced[i] == 'l'){      //LOGARITHM
+      int index = i;
+      String number = "";      
+      while( stringIntroduced[index] != ')' ){
+        if( ( stringIntroduced[index] >= '0' && stringIntroduced[index] <= '9') || stringIntroduced[index] == '.' ){
+          number += stringIntroduced[index];
+        }
+        index++;        
+      }
+      number = String( log10(number.toDouble() ) );
+      alteredString += number;
+      i = index;  
+    }
+    else if(stringIntroduced[i] == 's' && stringIntroduced[i+1] == 'i'){      //SINUS
+      int index = i;
+      String number = "";      
+      while( stringIntroduced[index] != ')' ){
+        if( ( stringIntroduced[index] >= '0' && stringIntroduced[index] <= '9') || stringIntroduced[index] == '.' ){
+          number += stringIntroduced[index];
+        }
+        index++;        
+      }
+      number = String( sin(number.toDouble() ) );
+      alteredString += number;
+      i = index;  
+    }
+    else if(stringIntroduced[i] == 'c'){      //COSINUS
+      int index = i;
+      String number = "";      
+      while( stringIntroduced[index] != ')' ){
+        if( ( stringIntroduced[index] >= '0' && stringIntroduced[index] <= '9') || stringIntroduced[index] == '.' ){
+          number += stringIntroduced[index];
+        }
+        index++;        
+      }
+      number = String( cos(number.toDouble() ) );
+      alteredString += number;
+      i = index;  
+    }
+    else if(stringIntroduced[i] == 't'){      //TANGENT
+      int index = i;
+      String number = "";      
+      while( stringIntroduced[index] != ')' ){
+        if( ( stringIntroduced[index] >= '0' && stringIntroduced[index] <= '9') || stringIntroduced[index] == '.' ){
+          number += stringIntroduced[index];
+        }
+        index++;        
+      }
+      number = String( tan(number.toDouble() ) );
+      alteredString += number;
+      i = index;  
+    } else {
+      alteredString += stringIntroduced[i];     //If it isn't any of the hard operations, keep copying
+    }
+  }
+  return alteredString;
+}
 
 
 //FUNCTION THAT CALCULATES ANSWER BY GIVING AN STRING. RETURNS THE ANSWER
@@ -126,6 +267,10 @@ float calculateAnswer(String stringIntroduced){
   String numberAux = "";                                //Actual number recognized
   char symbolRecognized;                                //Actual symbol recognized
   bool firstNumber = true;                              //FLAG that marks if it is the first number recognized
+
+  //Before calculate the answer, lets convert the string into basic operations only
+  stringIntroduced = deleteHardOperations(stringIntroduced);
+  
   //Traverse the array char by char
   for(int i = 0 ; i < stringIntroduced.length() ; i++){
     //If it is a number, concatenate it
@@ -208,6 +353,25 @@ void loop(){
     stringDisplayed += key;
   }
 
+  
+  //If not in the menu and press 'A' -> delete the last char
+  if( key == 'A' && !inTheMenu ){
+    stringDisplayed.remove(stringDisplayed.length()-1);
+    lcd.clear();
+    lcd.print(stringDisplayed);             //Print again the string but without the last char
+  }
+  //If not in the menu and press 'B' -> put a ')'
+  if( key == 'B' && !inTheMenu ){
+    lcd.print(')');                         //Print the ')'
+    stringDisplayed += ')';
+  }
+  //If not in the menu and press 'C' -> put a ','
+  if( key == 'C' && !inTheMenu ){
+    lcd.print(',');                         //Print the ','
+    stringDisplayed += ',';
+  }
+  
+  
   //If not in the menu and press '=', calculate the answer and show it. Restart flag now ON
   if( key == '=' && !inTheMenu ){
     lcd.clear();
@@ -250,5 +414,4 @@ void loop(){
 
 //TODOs
 //1.- Se pulsan numeros y aparecen en la pantalla. Si se salen de la pantalla por la derecha (no caben) ir moviendo el string hacia la derecha
-//2.- Algún botón para borrar la operación
-//3.- Add raise numbers and square roots
+//2.- Rounds big numbers and dont know why

@@ -349,29 +349,56 @@ void loop(){
       lcd.setCursor(0, 0);
       stringDisplayed = "";   
     }
-    lcd.print(key);                         //Print the number pressed
-    stringDisplayed += key;
+    if( stringDisplayed.length() >= 16 ){
+      lcd.scrollDisplayLeft();
+      lcd.print(key);                         //Print the number pressed
+      stringDisplayed += key;
+    }else{
+      lcd.print(key);                         //Print the number pressed
+      stringDisplayed += key;
+    }
   }
 
   
   //If not in the menu and press 'A' -> delete the last char
   if( key == 'A' && !inTheMenu ){
-    stringDisplayed.remove(stringDisplayed.length()-1);
-    lcd.clear();
-    lcd.print(stringDisplayed);             //Print again the string but without the last char
+    if( stringDisplayed.length() >= 16 ){
+      stringDisplayed.remove(stringDisplayed.length()-1);
+      lcd.clear();
+      lcd.print(stringDisplayed);             //Print again the string but without the last char 
+      int aux = stringDisplayed.length() - 16;
+      for(int i = 0 ; i < aux ; i++){
+        lcd.scrollDisplayLeft();        
+      }      
+    }else{
+      stringDisplayed.remove(stringDisplayed.length()-1);
+      lcd.clear();
+      lcd.print(stringDisplayed);             //Print again the string but without the last char      
+    }
+
   }
   //If not in the menu and press 'B' -> put a ')'
   if( key == 'B' && !inTheMenu ){
-    lcd.print(')');                         //Print the ')'
     stringDisplayed += ')';
+    lcd.clear();
+    lcd.print(stringDisplayed);
+    int aux = stringDisplayed.length() - 16;
+    for(int i = 0 ; i < aux ; i++){
+      lcd.scrollDisplayLeft();        
+    }
   }
   //If not in the menu and press 'C' -> put a ','
-  if( key == 'C' && !inTheMenu ){
-    lcd.print(',');                         //Print the ','
+  if( key == 'C' && !inTheMenu ){                       
     stringDisplayed += ',';
+    lcd.clear();
+    lcd.print(stringDisplayed);
+    int aux = stringDisplayed.length() - 16;
+    for(int i = 0 ; i < aux ; i++){
+      lcd.scrollDisplayLeft();        
+    }
   }
   
-  
+
   //If not in the menu and press '=', calculate the answer and show it. Restart flag now ON
   if( key == '=' && !inTheMenu ){
     lcd.clear();
@@ -380,11 +407,13 @@ void loop(){
     lcd.setCursor(0, 1);
     lcd.print('=');
     lcd.print( calculateAnswer(stringDisplayed) );
-    restartFlag = true;
+    lcd.setCursor(stringDisplayed.length(), 0);
+    //restartFlag = true;
   }  
   
   //If the key was D and you are not yet in the menu, you have chosen the MENU so it flags true
   if( key == 'D' && !inTheMenu ){
+    lcd.clear();    
     inTheMenu = true;
   }
   //If you are in the menu you can navigate through it, choose an option or leave without choosing
@@ -397,9 +426,20 @@ void loop(){
       }else if(key == 'C'){                 //CHOOSE THE OPTION IN THE MENU. Clear the display and leave the menu. The option is memorized with 'cursor'
         lcd.clear();
         stringDisplayed = includeOperator(cursor, stringDisplayed);            //PUTS OPERATOR IN THE STRING
-        cursor = 0;                                                            //Clear the chosen option
-        lcd.print(stringDisplayed);                                            
-        inTheMenu = false;
+
+        if( stringDisplayed.length() >= 16 ){
+          cursor = 0;
+          lcd.print(stringDisplayed);
+          int aux = stringDisplayed.length() - 16;
+          for(int i = 0 ; i < aux ; i++){
+            lcd.scrollDisplayLeft();        
+          }
+          inTheMenu = false;  
+        }else{
+          cursor = 0;                                                            //Clear the chosen option
+          lcd.print(stringDisplayed);                                            
+          inTheMenu = false;
+        }              
       }else if(key == 'D'){                 //LEAVE THE MENU WITHOUT CHOOSING ANY OPTION. Clear the display and the 'cursor', leave the menu.
         lcd.clear();
         lcd.print(stringDisplayed);
@@ -413,5 +453,4 @@ void loop(){
 
 
 //TODOs
-//1.- Se pulsan numeros y aparecen en la pantalla. Si se salen de la pantalla por la derecha (no caben) ir moviendo el string hacia la derecha
-//2.- Rounds big numbers and dont know why
+//1.- Rounds big numbers and dont know why

@@ -39,7 +39,7 @@ void setup(){
 
 //FUNCTION TO NAVIGATE THROUGH THE MENU AND SHOW THE OPTIONS IN THE DISPLAY
 int cursor = 0;                             //Cursor points to the actual option in the menu
-int menuOptions=11;                          //Total amount of options in the menu
+int menuOptions=13;                          //Total amount of options in the menu
 void menuNavigation(int upDown){
 
   //UPDATE THE CURSOR: up or down without crossing the limits
@@ -55,13 +55,6 @@ void menuNavigation(int upDown){
     }
   }
   //SELECT THE OPTION DESIRED
-  //1.- Addition
-  //2.- Subtraction
-  //3.- Multiplication
-  //4.- Division
-  //5.- Power
-  //6.- Logarithm
-  //7.- SquareRoot  
   String menu [menuOptions] = { {"SELECT OPTION:"},
                                 {"1.- Add"}, 
                                 {"2.- Subtract"}, 
@@ -72,7 +65,9 @@ void menuNavigation(int upDown){
                                 {"7.- SquareRoot"},
                                 {"8.- Sine"},
                                 {"9.- Cosine"},
-                                {"10.- Tangent"}                     
+                                {"10.- Tangent"},
+                                {"11.- 1 Grad Eq"},
+                                {"12.- 2 Grad Eq"}
                               };                    
   
   //String that will be displayed. To concatenate an arrow '->' with the actual option
@@ -146,11 +141,85 @@ String includeOperator(int chosenOption, String stringIntroduced){
     stringIntroduced+="tan(";
           
   }
-  
 
   return stringIntroduced;
 }
 
+
+//FUNCTION THAT IS CALLED TO COMPOSE THE EQUATION
+String a = "";                //Storage A of the equation
+String b = "";                //Storage B of the equation
+String c = "";                //Storage C of the equation
+int introducedLetter = 0;     //Index that indicates which letter is being introduced
+void introduceEquation(char key){
+  //THE 'x' given in the 'key' is to only show the equation info without concatenate something
+  
+  //If it is first grade equation  
+  if( cursor == 11 ){
+    lcd.setCursor(0, 0);
+    lcd.print("Bx + C");
+    if( introducedLetter == 0){
+      if ( key != 'x'){
+          b += key;
+      }
+      lcd.setCursor(0, 1);
+      lcd.print("B=" + b);        
+    }else if(introducedLetter == 1){
+      if ( key != 'x'){
+          c += key;
+      }    
+      lcd.setCursor(0, 1);
+      lcd.print("C=" + c);      
+    }
+  }
+  //If it is second grade equation
+  else if( cursor == 12 ){
+    lcd.setCursor(0, 0);
+    lcd.print("Ax^2 + Bx + C");
+    if( introducedLetter == 0){
+      if ( key != 'x'){
+          a += key;
+      }
+      lcd.setCursor(0, 1);
+      lcd.print("A=" + a);        
+    }else if(introducedLetter == 1){
+      if ( key != 'x'){
+          b += key;
+      }    
+      lcd.setCursor(0, 1);
+      lcd.print("B=" + b);      
+    }else{
+      if ( key != 'x'){
+          c += key;
+      }    
+      lcd.setCursor(0, 1);
+      lcd.print("C=" + c);      
+    }
+  }
+}
+
+
+//RESOLVES THE ACTUAL STORAGED EQUATION.
+void resolveEquation(){
+  if( cursor == 11){            //IF FIRST GRADE EQUATION WAS SELECTED -> resolve and show results
+    String resultado;
+    float aux = (-c.toDouble())/(b.toDouble());
+    resultado = String(aux);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(b + "x + " + c );
+    lcd.setCursor(0, 1);
+    lcd.print("   x=" + resultado);          
+  }else{                      //IF SECOND GRADE EQUATION WAS SELECTED -> resolve and show results
+    float aux = (-b.toDouble() + sqrt(b.toDouble()*b.toDouble() - 4 * a.toDouble() * c.toDouble()))/(2*a.toDouble());
+    float aux2 = (-b.toDouble() - sqrt(b.toDouble()*b.toDouble() - 4 * a.toDouble() * c.toDouble()))/(2*a.toDouble());
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print(a + "x^2 + " + b + "x + " + c );
+    lcd.setCursor(0, 1);
+    lcd.print("x=" + String(aux) + "; x=" + String(aux2) ); 
+  }
+}
 
 //FUNCTION THAT CHANGE THE POWERs, LOGARITHMs AND SQRTs TO THEIR RESULT IN THE STRING
 String deleteHardOperations(String stringIntroduced){
@@ -336,6 +405,7 @@ String stringDisplayed = "";                //String. Contains the actual operat
 bool inTheMenu = false;                     //True = you are in the menu ; False = you are not in the menu
 bool restartFlag = false;                   //Flag to clear the screen
 char key;                                   //Key pressed on the keyboard
+bool equationMenu = false;                  //True = you are in the equation resolver menu ; False = you are not in the equation resolver menu
 void loop(){
 
   key = keypad.getKey();                    //Get the key from the keyboard
@@ -349,11 +419,20 @@ void loop(){
       lcd.setCursor(0, 0);
       stringDisplayed = "";   
     }
-    if( stringDisplayed.length() >= 16 ){
+
+    //If equation resolver is selected, help introducing the numbers
+    if(equationMenu){ 
+      lcd.clear();
+      introduceEquation(key);
+    }
+    //If it is not the equation resolver, but string are far too long, scroll
+    else if( stringDisplayed.length() >= 16 ){
       lcd.scrollDisplayLeft();
       lcd.print(key);                         //Print the number pressed
       stringDisplayed += key;
-    }else{
+    }
+    //If it is not the equation resolver, and the string isnt too long
+    else{
       lcd.print(key);                         //Print the number pressed
       stringDisplayed += key;
     }
@@ -361,7 +440,7 @@ void loop(){
 
   
   //If not in the menu and press 'A' -> delete the last char
-  if( key == 'A' && !inTheMenu ){
+  if( key == 'A' && !inTheMenu && !equationMenu ){
     if( stringDisplayed.length() >= 16 ){
       stringDisplayed.remove(stringDisplayed.length()-1);
       lcd.clear();
@@ -378,7 +457,7 @@ void loop(){
 
   }
   //If not in the menu and press 'B' -> put a ')'
-  if( key == 'B' && !inTheMenu ){
+  if( key == 'B' && !inTheMenu && !equationMenu){
     stringDisplayed += ')';
     lcd.clear();
     lcd.print(stringDisplayed);
@@ -388,7 +467,7 @@ void loop(){
     }
   }
   //If not in the menu and press 'C' -> put a ','
-  if( key == 'C' && !inTheMenu ){                       
+  if( key == 'C' && !inTheMenu && !equationMenu){                       
     stringDisplayed += ',';
     lcd.clear();
     lcd.print(stringDisplayed);
@@ -398,9 +477,21 @@ void loop(){
     }
   }
   
-
+  //IF in the equation resolver you push 'C', goes to the next letter of the equation. If it isnt any letter left, resolve and restart then
+  if(equationMenu && key == 'C'){
+    introducedLetter++;
+    if( (cursor == 11 && introducedLetter > 1 ) || (cursor == 12 && introducedLetter > 2 ) ){
+      resolveEquation();
+      a = b = c = "";
+      introducedLetter = -1;   
+    }else{
+      lcd.clear();  
+      introduceEquation('x');   //Just to show something when selected EQUATION RESOLVER in the menu
+    }      
+  }
+  
   //If not in the menu and press '=', calculate the answer and show it. Restart flag now ON
-  if( key == '=' && !inTheMenu ){
+  if( key == '=' && !inTheMenu && !equationMenu){
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(stringDisplayed);
@@ -410,9 +501,10 @@ void loop(){
     lcd.setCursor(stringDisplayed.length(), 0);
     //restartFlag = true;
   }  
-  
+
+
   //If the key was D and you are not yet in the menu, you have chosen the MENU so it flags true
-  if( key == 'D' && !inTheMenu ){
+  if( (key == 'D' && !inTheMenu)){
     lcd.clear();    
     inTheMenu = true;
   }
@@ -425,21 +517,43 @@ void loop(){
         menuNavigation(1);
       }else if(key == 'C'){                 //CHOOSE THE OPTION IN THE MENU. Clear the display and leave the menu. The option is memorized with 'cursor'
         lcd.clear();
-        stringDisplayed = includeOperator(cursor, stringDisplayed);            //PUTS OPERATOR IN THE STRING
-
-        if( stringDisplayed.length() >= 16 ){
-          cursor = 0;
-          lcd.print(stringDisplayed);
-          int aux = stringDisplayed.length() - 16;
-          for(int i = 0 ; i < aux ; i++){
-            lcd.scrollDisplayLeft();        
+        
+        if( cursor == 11 || cursor == 12 ){ //If equation resolver was selected, flag it and show start info
+          equationMenu = true;
+          a = b = c = "";
+          introducedLetter = 0;                    
+          lcd.clear();
+          if(cursor == 12){                 //Second grade equation
+            lcd.setCursor(0, 0);
+            lcd.print("Ax^2 + Bx + C");
+            lcd.setCursor(0, 1);
+            lcd.print("A=");
           }
-          inTheMenu = false;  
-        }else{
-          cursor = 0;                                                            //Clear the chosen option
-          lcd.print(stringDisplayed);                                            
+          if(cursor == 11){               //First grade equation
+            lcd.setCursor(0, 0);
+            lcd.print("Bx + C");  
+            lcd.setCursor(0, 1);
+            lcd.print("B="); 
+          }      
           inTheMenu = false;
-        }              
+        }else{
+          equationMenu = false;
+          stringDisplayed = includeOperator(cursor, stringDisplayed);            //PUTS OPERATOR IN THE STRING
+          if( stringDisplayed.length() >= 16 ){
+            cursor = 0;
+            lcd.print(stringDisplayed);
+            int aux = stringDisplayed.length() - 16;
+            for(int i = 0 ; i < aux ; i++){
+              lcd.scrollDisplayLeft();        
+            }
+            inTheMenu = false;  
+          }else{
+            cursor = 0;                                                            //Clear the chosen option
+            lcd.print(stringDisplayed);                                            
+            inTheMenu = false;
+          }  
+        }
+            
       }else if(key == 'D'){                 //LEAVE THE MENU WITHOUT CHOOSING ANY OPTION. Clear the display and the 'cursor', leave the menu.
         lcd.clear();
         lcd.print(stringDisplayed);

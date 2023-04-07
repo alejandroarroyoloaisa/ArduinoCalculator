@@ -32,6 +32,7 @@ void setup(){
   
     //Light the back of the LCD
     lcd.backlight();   
+    
 }
 
 
@@ -39,7 +40,7 @@ void setup(){
 
 //FUNCTION TO NAVIGATE THROUGH THE MENU AND SHOW THE OPTIONS IN THE DISPLAY
 int cursor = 0;                             //Cursor points to the actual option in the menu
-int menuOptions=13;                          //Total amount of options in the menu
+int menuOptions=15;                          //Total amount of options in the menu
 void menuNavigation(int upDown){
 
   //UPDATE THE CURSOR: up or down without crossing the limits
@@ -67,7 +68,9 @@ void menuNavigation(int upDown){
                                 {"9.- Cosine"},
                                 {"10.- Tangent"},
                                 {"11.- 1 Grad Eq"},
-                                {"12.- 2 Grad Eq"}
+                                {"12.- 2 Grad Eq"},
+                                {"13.- Function"},
+                                {"14.- Put 'x'"}
                               };                    
   
   //String that will be displayed. To concatenate an arrow '->' with the actual option
@@ -140,11 +143,48 @@ String includeOperator(int chosenOption, String stringIntroduced){
 
     stringIntroduced+="tan(";
           
+  }else if(chosenOption == 14){
+    stringIntroduced+="x";
   }
 
   return stringIntroduced;
 }
 
+
+//FUNCTION THAT RESOLVE THE WRITTEN EQUATION WITH THE GIVEN "x"
+float calculateEquation(String introducedEquation, float introducedXValue){
+  
+  String stringAux = "";
+  stringAux = helpWithXs(introducedEquation, introducedXValue);
+  stringAux = deleteHardOperations(stringAux);
+  float result = calculateAnswer(stringAux);
+  
+  return result;  
+}
+
+//HELP WITH 'x' AND THE NUMBERS NEXT TO THEM (like 5*x - 3*x   ->  [4]  20 - 12)
+String helpWithXs(String introducedEquation, float introducedXValue){
+  String auxNumber = "";
+  String alteredString = "";
+  for(int i = 0 ; i < introducedEquation.length() ; i++){
+    
+    if( introducedEquation[i] >= '0' && introducedEquation[i] <= '9' ){
+      auxNumber += introducedEquation[i];    
+    }
+    else if( introducedEquation[i] == '*'){
+      auxNumber = "" + String(auxNumber.toFloat()*introducedXValue);
+      alteredString += auxNumber;
+      auxNumber = "";
+      i+=1;
+    }else if( introducedEquation[i] == 'x'){
+      alteredString += introducedXValue;
+    }
+    else{
+      alteredString += introducedEquation[i]; 
+    }
+  }
+  return alteredString;
+}
 
 //FUNCTION THAT IS CALLED TO COMPOSE THE EQUATION
 String a = "";                //Storage A of the equation
@@ -406,6 +446,8 @@ bool inTheMenu = false;                     //True = you are in the menu ; False
 bool restartFlag = false;                   //Flag to clear the screen
 char key;                                   //Key pressed on the keyboard
 bool equationMenu = false;                  //True = you are in the equation resolver menu ; False = you are not in the equation resolver menu
+String xNumber = "";
+bool askForAnX = false;
 void loop(){
 
   key = keypad.getKey();                    //Get the key from the keyboard
@@ -419,7 +461,11 @@ void loop(){
       lcd.setCursor(0, 0);
       stringDisplayed = "";   
     }
-
+    //If you are being asked for an "x" to resolve the written equation
+    if (askForAnX){
+      xNumber+=key;
+      lcd.print(key);     
+    } else
     //If equation resolver is selected, help introducing the numbers
     if(equationMenu){ 
       lcd.clear();
@@ -438,9 +484,10 @@ void loop(){
     }
   }
 
+
   
   //If not in the menu and press 'A' -> delete the last char
-  if( key == 'A' && !inTheMenu && !equationMenu ){
+  if( key == 'A' && !inTheMenu && !equationMenu && !askForAnX ){
     if( stringDisplayed.length() >= 16 ){
       stringDisplayed.remove(stringDisplayed.length()-1);
       lcd.clear();
@@ -457,7 +504,7 @@ void loop(){
 
   }
   //If not in the menu and press 'B' -> put a ')'
-  if( key == 'B' && !inTheMenu && !equationMenu){
+  if( key == 'B' && !inTheMenu && !equationMenu && !askForAnX){
     stringDisplayed += ')';
     lcd.clear();
     lcd.print(stringDisplayed);
@@ -467,7 +514,7 @@ void loop(){
     }
   }
   //If not in the menu and press 'C' -> put a ','
-  if( key == 'C' && !inTheMenu && !equationMenu){                       
+  if( key == 'C' && !inTheMenu && !equationMenu && !askForAnX){                       
     stringDisplayed += ',';
     lcd.clear();
     lcd.print(stringDisplayed);
@@ -476,7 +523,19 @@ void loop(){
       lcd.scrollDisplayLeft();        
     }
   }
-  
+
+  //If you want to resolve a written function given the value of "x"
+  if( key == 'C' && askForAnX){
+    askForAnX = false;
+    lcd.clear();
+    lcd.setCursor(0, 0);    
+    lcd.print("f(x)= " + stringDisplayed);
+    lcd.setCursor(0, 1);     
+    lcd.print( "f(" + String(xNumber) + ")=" + String(calculateEquation(stringDisplayed, xNumber.toFloat() )) );
+    lcd.setCursor(0, 0);
+    lcd.print("f(x)= ");
+    xNumber = "";  
+  }
   //IF in the equation resolver you push 'C', goes to the next letter of the equation. If it isnt any letter left, resolve and restart then
   if(equationMenu && key == 'C'){
     introducedLetter++;
@@ -491,7 +550,7 @@ void loop(){
   }
   
   //If not in the menu and press '=', calculate the answer and show it. Restart flag now ON
-  if( key == '=' && !inTheMenu && !equationMenu){
+  if( key == '=' && !inTheMenu && !equationMenu ){
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(stringDisplayed);
@@ -504,7 +563,7 @@ void loop(){
 
 
   //If the key was D and you are not yet in the menu, you have chosen the MENU so it flags true
-  if( (key == 'D' && !inTheMenu)){
+  if( (key == 'D' && !inTheMenu) ){
     lcd.clear();    
     inTheMenu = true;
   }
@@ -518,7 +577,16 @@ void loop(){
       }else if(key == 'C'){                 //CHOOSE THE OPTION IN THE MENU. Clear the display and leave the menu. The option is memorized with 'cursor'
         lcd.clear();
         
-        if( cursor == 11 || cursor == 12 ){ //If equation resolver was selected, flag it and show start info
+        if( cursor == 13 ){                 //Solve equation given x
+          askForAnX = true;
+          inTheMenu = false;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Introduce x:");
+          lcd.setCursor(0, 1);
+          lcd.print("x = ");                            
+        }
+        else if( cursor == 11 || cursor == 12 ){ //If equation resolver was selected, flag it and show start info
           equationMenu = true;
           a = b = c = "";
           introducedLetter = 0;                    

@@ -1,6 +1,6 @@
 # Arduino Calculator
 
-Es una Calculadora Básica para Arduino con pantalla LCD 16x2 y teclado matricial 4x4. Desarrollada en C++ desde Arduino IDE.
+Es una Calculadora Básica para Arduino con pantalla LCD 16x2 y teclado matricial 4x4, resolviendo mediante código las limitaciones del hardware utilizado (pocos botones, poca capacidad de dígitos en pantalla). Desarrollada en C++ desde Arduino IDE.
 
 ## Características
 
